@@ -76,7 +76,6 @@
             this.timer2 = new System.Windows.Forms.Timer(this.components);
             this.timer3 = new System.Windows.Forms.Timer(this.components);
             this.timer4 = new System.Windows.Forms.Timer(this.components);
-            this.button3 = new System.Windows.Forms.Button();
             this.toolStrip1.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
@@ -221,7 +220,6 @@
             // 
             // panel1
             // 
-            this.panel1.Controls.Add(this.button3);
             this.panel1.Controls.Add(this.label7);
             this.panel1.Controls.Add(this.label9);
             this.panel1.Controls.Add(this.lblfail);
@@ -519,15 +517,6 @@
             this.timer4.Interval = 30000;
             this.timer4.Tick += new System.EventHandler(this.timer4_Tick);
             // 
-            // button3
-            // 
-            this.button3.Location = new System.Drawing.Point(399, 3);
-            this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(75, 23);
-            this.button3.TabIndex = 13;
-            this.button3.Text = "button3";
-            this.button3.UseVisualStyleBackColor = true;
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -608,7 +597,6 @@
         private System.Windows.Forms.Timer timer4;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
         private System.Windows.Forms.ToolStripLabel lblerrinfo;
-        private System.Windows.Forms.Button button3;
     }
 }
 
