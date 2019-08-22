@@ -52,7 +52,7 @@ namespace ZkhwAnalyApp
         public string LDHL { get; set; }
         public string HBDH { get; set; }
         public string aAMY { get; set; } 
-        public string Crea { get; set; } 
+      
         public string HDL_C { get; set; }
         public string LDL_C { get; set; }
     }

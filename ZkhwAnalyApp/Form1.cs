@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
 using System.Net.Sockets;
-using System.Text.RegularExpressions;
+using System.Text.RegularExpressions; 
 
 namespace ZkhwAnalyApp
 {
@@ -31,6 +31,8 @@ namespace ZkhwAnalyApp
         string shlasttime = "";
         string shenghuaPath = "";
         string xuechangguiPath = "";
+        string strIP = "";
+        string strPort = "";
 
         List<DisplayData> _existShList = new List<DisplayData>();
         List<DisplayData> _existXcgList = new List<DisplayData>();
@@ -44,7 +46,7 @@ namespace ZkhwAnalyApp
             listView1.Columns[3].Width = listView1.ClientSize.Width - (listView1.Columns[0].Width + listView1.Columns[1].Width + listView1.Columns[2].Width);
         }
         private void Form1_Load(object sender, EventArgs e)
-        {
+        { 
             SetListViewColWidth();
             listView1.BackColor = Color.Azure;
             GetDeviceInfo();
@@ -60,7 +62,7 @@ namespace ZkhwAnalyApp
         { 
             string shxqAgreement = "";
             string com = "";
-            Common.GetConfigValues(out shenghuaPath, out xuechangguiPath, out shxqAgreement, out com,out shlasttime,out xcglasttime);
+            Common.GetConfigValues(out shenghuaPath, out xuechangguiPath, out shxqAgreement, out com,out shlasttime,out xcglasttime,out strIP,out strPort);
             comboBox1.Text = shxqAgreement;
             textBox1.Text = shenghuaPath;
             textBox2.Text = xuechangguiPath;
@@ -115,14 +117,26 @@ namespace ZkhwAnalyApp
             textBox1.Visible = a;
             label5.Visible = a;
             label2.Visible = a;
-            textBox2.Visible = a;
+            textBox2.Visible = a; 
+        }
+
+        private void IPPortControlVisible(bool a)
+        {
+            label10.Visible = a;
+            textBox4.Visible = a;
+            label11.Visible = a;
+            textBox5.Visible = a;
         }
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (comboBox1.SelectedIndex < 0) return;
             ControlVisible(false);
+            IPPortControlVisible(true);
+            textBox4.Text = strIP;
+            textBox5.Text = strPort;
             if (this.comboBox1.Text == "库贝尔")
             {
+                 
                 label14.Visible = true;
                 comboBox2.Visible = true;
                 string[] ArryPort = System.IO.Ports.SerialPort.GetPortNames();
@@ -139,6 +153,7 @@ namespace ZkhwAnalyApp
             }
             else if(this.comboBox1.Text == "英诺华")
             {
+                IPPortControlVisible(false);
                 ControlVisible(true);
                 label14.Visible = false;
                 comboBox2.Visible = false;
@@ -175,7 +190,9 @@ namespace ZkhwAnalyApp
             string shenghuaPath1= textBox1.Text;
             string xuechangguiPath1= textBox2.Text;
             string err = "";
-            bool flag = Common.WriteConfigValues(shenghuaPath1, xuechangguiPath1, shxqAgreement, com,out err);
+            string ip = textBox4.Text;
+            string port = textBox5.Text;
+            bool flag = Common.WriteConfigValues(shenghuaPath1, xuechangguiPath1, shxqAgreement, com,ip,port,out err);
             if(flag==true)
             {
                 MessageBox.Show("保存成功,重启程序。");
@@ -499,20 +516,29 @@ namespace ZkhwAnalyApp
         #region 迈瑞
         private void socketTcpMr()
         {
-            string hostName = Dns.GetHostName();   //获取本机名
-            IPHostEntry localhost = Dns.GetHostByName(hostName);//方法已过期，可以获取IPv4的地址
-            IPAddress ip = localhost.AddressList[0];
-            Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            IPEndPoint point = new IPEndPoint(ip, 9001);
-            //socket绑定监听地址
-            serverSocket.Bind(point);
-            //设置同时连接个数
-            serverSocket.Listen(10);
+            try
+            {
+                string hostName = Dns.GetHostName();   //获取本机名
+                IPHostEntry localhost = Dns.GetHostByName(hostName);//方法已过期，可以获取IPv4的地址
+                                                                    //IPAddress ip = localhost.AddressList[0];
+                IPAddress ip = IPAddress.Parse(strIP);
+                Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                IPEndPoint point = new IPEndPoint(ip, int.Parse(strPort));
+                //socket绑定监听地址
+                serverSocket.Bind(point);
+                //设置同时连接个数
+                serverSocket.Listen(10);
 
-            //利用线程后台执行监听,否则程序会假死
-            Thread thread = new Thread(ListenMr);
-            thread.IsBackground = true;
-            thread.Start(serverSocket);
+                //利用线程后台执行监听,否则程序会假死
+                Thread thread = new Thread(ListenMr);
+                thread.IsBackground = true;
+                thread.Start(serverSocket);
+            }
+            catch(Exception dd)
+            {
+                MessageBox.Show(dd.Message);
+            }
+            
         }
         private void ListenMr(object o)
         {
@@ -586,8 +612,8 @@ namespace ZkhwAnalyApp
                             case "ALP": sh.ALP = sHL7Array[5]; break;
                             case "ALT": sh.ALT = sHL7Array[5]; break;
                             case "AST": sh.AST = sHL7Array[5]; break;
-                            case "CHO": sh.CHO = sHL7Array[5]; break;
-                            case "CREA-S": sh.Crea = sHL7Array[5]; break;
+                            case "TC": sh.CHO = sHL7Array[5]; break;
+                            case "CREA-S": sh.CREA = sHL7Array[5]; break;
                             case "D-Bil-V": sh.DBIL = sHL7Array[5]; break;
                             case "Glu-G": sh.GLU = sHL7Array[5]; break;
                             case "HDL-C": sh.HDL_C = sHL7Array[5]; break;
@@ -603,16 +629,27 @@ namespace ZkhwAnalyApp
                     sh.createtime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     //插入
                     RePushDataShHandler handler = new RePushDataShHandler(PushDataForSh);
+                    DisplayData obj = new DisplayData();
+                    obj.BarCode = sh.bar_code;
+                    obj.UploadDate = sh.createtime;
                     var q = (from l in _existShList where l.BarCode == sh.bar_code && l.UploadDate == sh.createtime select l).ToList();
                     if (q.Count <= 0)
-                    {
-                        DisplayData obj = new DisplayData();
-                        obj.BarCode = sh.bar_code;
-                        obj.UploadDate = sh.createtime;
-                        _existShList.Add(obj);
-                        IAsyncResult result = handler.BeginInvoke(sh, new AsyncCallback(CallBackPushShDataFunc), sh);
+                    { 
+                        _existShList.Add(obj); 
                     }
-
+                    else
+                    {
+                        for (int i = 0; i < _existShList.Count; i++)
+                        {
+                            if (obj.BarCode == _existShList[i].BarCode)
+                            {
+                                _existShList.RemoveAt(i);
+                                break;
+                            }
+                        }
+                        _existShList.Add(obj);
+                    }
+                    IAsyncResult result = handler.BeginInvoke(sh, new AsyncCallback(CallBackPushShDataFunc), sh);
                     //返回生化的确认数据报文
                     for (int j = 0; j < sendArraysh.Length; j++)
                     {
@@ -734,16 +771,27 @@ namespace ZkhwAnalyApp
                             }
                         } 
                         RePushDataXcgHandler handler = new RePushDataXcgHandler(PushDataForXcg);
+                        DisplayData obj = new DisplayData();
+                        obj.BarCode = xcg.bar_code;
+                        obj.UploadDate = xcg.createtime;
                         var q = (from l in _existXcgList where l.BarCode == xcg.bar_code && l.UploadDate == xcg.createtime select l).ToList();
                         if (q.Count <= 0)
-                        {
-                            DisplayData obj = new DisplayData();
-                            obj.BarCode = xcg.bar_code;
-                            obj.UploadDate = xcg.createtime;
-                            _existXcgList.Add(obj);
-                            IAsyncResult result = handler.BeginInvoke(xcg, new AsyncCallback(CallBackPushXcgDataFunc), xcg);
+                        { 
+                            _existXcgList.Add(obj); 
                         }
-
+                        else
+                        {
+                            for (int i = 0; i < _existXcgList.Count; i++)
+                            {
+                                if (obj.BarCode == _existXcgList[i].BarCode)
+                                {
+                                    _existXcgList.RemoveAt(i);
+                                    break;
+                                }
+                            }
+                            _existXcgList.Add(obj);
+                        }
+                        IAsyncResult result = handler.BeginInvoke(xcg, new AsyncCallback(CallBackPushXcgDataFunc), xcg);
                         //返回血球的确认数据报文
                         for (int j = 0; j < sendArray.Length; j++)
                         {
@@ -835,7 +883,7 @@ namespace ZkhwAnalyApp
                                 case "ALT": sh.ALT = arr_dt2.Rows[i]["result"].ToString(); break;
                                 case "AST": sh.AST = arr_dt2.Rows[i]["result"].ToString(); break;
                                 case "CHO": sh.CHO = arr_dt2.Rows[i]["result"].ToString(); break;
-                                case "Crea": sh.Crea = arr_dt2.Rows[i]["result"].ToString(); break;
+                                case "Crea": sh.CREA = arr_dt2.Rows[i]["result"].ToString(); break;
                                 case "DBIL": sh.DBIL = arr_dt2.Rows[i]["result"].ToString(); break;
                                 case "GGT": sh.GGT = arr_dt2.Rows[i]["result"].ToString(); break;
                                 case "GLU": sh.GLU = arr_dt2.Rows[i]["result"].ToString(); break;
@@ -852,22 +900,34 @@ namespace ZkhwAnalyApp
                         if (sh.ALT == "N/A") { sh.ALT = "0"; };
                         if (sh.AST == "N/A") { sh.AST = "0"; };
                         if (sh.TBIL == "N/A") { sh.TBIL = "0"; };
-                        if (sh.Crea == "N/A") { sh.Crea = "0"; };
+                        if (sh.CREA == "N/A") { sh.CREA = "0"; };
                         if (sh.UREA == "N/A") { sh.UREA = "0"; };
                         if (sh.GLU == "N/A") { sh.GLU = "0"; };
                         if (sh.TG == "N/A") { sh.TG = "0"; };
                         if (sh.CHO == "N/A") { sh.CHO = "0"; };
                         if (sh.HDL_C == "N/A") { sh.HDL_C = "0"; };
                         if (sh.LDL_C == "N/A") { sh.LDL_C = "0"; };
+                        DisplayData obj = new DisplayData();
+                        obj.BarCode = sh.bar_code;
+                        obj.UploadDate = sh.createtime;
                         var q = (from l in _existShList where l.BarCode == sh.bar_code && l.UploadDate == sh.createtime select l).ToList();
                         if(q.Count<=0)
+                        { 
+                            _existShList.Add(obj); 
+                        }
+                        else
                         {
-                            DisplayData obj = new DisplayData();
-                            obj.BarCode = sh.bar_code;
-                            obj.UploadDate = sh.createtime;
+                            for (int i = 0; i < _existShList.Count; i++)
+                            {
+                                if (obj.BarCode == _existShList[i].BarCode)
+                                {
+                                    _existShList.RemoveAt(i);
+                                    break;
+                                }
+                            }
                             _existShList.Add(obj);
-                            IAsyncResult result = handler.BeginInvoke(sh, new AsyncCallback(CallBackPushShDataFunc), sh);
-                        } 
+                        }
+                        IAsyncResult result = handler.BeginInvoke(sh, new AsyncCallback(CallBackPushShDataFunc), sh);
                     }
                 }
             } 
@@ -934,15 +994,27 @@ namespace ZkhwAnalyApp
                                     default: break;
                                 }
                             }
+                            DisplayData obj = new DisplayData();
+                            obj.BarCode = xcg.bar_code;
+                            obj.UploadDate = xcg.createtime;
                             var q = (from l in _existXcgList where l.BarCode == xcg.bar_code && l.UploadDate == xcg.createtime select l).ToList();
                             if (q.Count <= 0)
+                            { 
+                                _existXcgList.Add(obj); 
+                            }
+                            else
                             {
-                                DisplayData obj = new DisplayData();
-                                obj.BarCode = xcg.bar_code;
-                                obj.UploadDate = xcg.createtime;
+                                for (int i = 0; i < _existXcgList.Count; i++)
+                                {
+                                    if (obj.BarCode == _existXcgList[i].BarCode)
+                                    {
+                                        _existXcgList.RemoveAt(i);
+                                        break;
+                                    }
+                                }
                                 _existXcgList.Add(obj);
-                                IAsyncResult result = handler.BeginInvoke(xcg, new AsyncCallback(CallBackPushXcgDataFunc), xcg);
-                            } 
+                            }
+                            IAsyncResult result = handler.BeginInvoke(xcg, new AsyncCallback(CallBackPushXcgDataFunc), xcg);
                         }
                     }
                 }
@@ -965,6 +1037,7 @@ namespace ZkhwAnalyApp
             }
             catch
             {
+
             }
             return flag;
         }
@@ -1058,6 +1131,7 @@ namespace ZkhwAnalyApp
         private void mySerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             bool isCRC = false;
+            Thread.Sleep(12000);
             try
             {
                 SerialPort sp = (SerialPort)sender;
@@ -1068,10 +1142,10 @@ namespace ZkhwAnalyApp
                     return;
                 }
                 sp.Read(byteRead, 0, byteRead.Length);
-                sp.DiscardInBuffer();
-                sp.DiscardOutBuffer();
+                //sp.DiscardInBuffer();
+                //sp.DiscardOutBuffer();
                 totalByteRead = totalByteRead.Concat(byteRead).ToArray();
-                text = Common.ToHexString(totalByteRead);
+                text =Common.ToHexString(totalByteRead);
                 if (totalByteRead.Length > 1000)
                 {
                     string beginText = text.Substring(0, 16);
@@ -1088,103 +1162,138 @@ namespace ZkhwAnalyApp
                         isCRC = true;
                     }
                 }
+
                 if (isCRC)
                 {
+                    //using (StreamWriter sw = new StreamWriter(Application.StartupPath + "/log.txt", true))
+                    //{
+                    //    sw.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ") + "接收报文2：" + text );
+                    //}
                     Thread multiAdd = new Thread(parsingTextData);
                     multiAdd.IsBackground = true;
                     multiAdd.Start(text);
-
-                    using (StreamWriter sw = new StreamWriter("log.txt", true))
-                    {
-                        sw.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ") + "报文：" + Common.ToHexString(totalByteRead));
-                    }
                     totalByteRead = new Byte[0];
                 }
             }
             catch (Exception ee)
             {
-                using (StreamWriter sw = new StreamWriter("log.txt", true))
+                using (StreamWriter sw = new StreamWriter(Application.StartupPath + "/log.txt", true))
                 {
-                    sw.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ") + "异常报文：" + Common.ToHexString(totalByteRead));
+                    sw.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ") + "异常报文1：" +Common.ToHexString(totalByteRead));
                 }
             }
         }
 
+      
+
         public void parsingTextData(object parameter)
         {
-            string xmlStr = @parameter.ToString();
-            UpLoadDataForXCG xcg = new UpLoadDataForXCG(); 
-            var doc = new XmlDocument();
-            doc.LoadXml(xmlStr);
-            var rowNoteList = doc.SelectNodes("/sample/smpinfo/p");
-            var fieldNodeID = rowNoteList[0].ChildNodes;
-            string barcode = fieldNodeID[1].InnerText;
-            var fieldNodeTime = rowNoteList[2].ChildNodes;
-            string timeNow = fieldNodeTime[1].InnerText;
-            timeNow = timeNow.Replace("T", " ") + ":00";
-            xcg.createtime = timeNow; //DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            var smpresultsList = doc.SelectNodes("/sample/smpresults/p");
-            foreach (XmlNode rowNode in smpresultsList)
+            UpLoadDataForXCG xcg = new UpLoadDataForXCG();
+            try
             {
-                var fieldNodeList = rowNode.ChildNodes;
-                string type = fieldNodeList[0].InnerText;
-                switch (type)
+                string xmlStr = @parameter.ToString(); 
+                var doc = new XmlDocument();
+                doc.LoadXml(xmlStr);
+                var rowNoteList = doc.SelectNodes("/sample/smpinfo/p");
+                var fieldNodeID = rowNoteList[0].ChildNodes;
+                string barcode = fieldNodeID[1].InnerText;
+                string[] barcodes = barcode.Split('/');
+                xcg.bar_code = barcodes[0].Replace("\n", "").Replace(" ", "").Replace("\t", "").Replace("\r", "").Trim();
+                var fieldNodeTime = rowNoteList[2].ChildNodes;
+                string timeNow = fieldNodeTime[1].InnerText;
+                timeNow = timeNow.Replace("T", " ") + ":00";
+                xcg.createtime = timeNow; //DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                var smpresultsList = doc.SelectNodes("/sample/smpresults/p");
+                foreach (XmlNode rowNode in smpresultsList)
                 {
-                    case "HCT": xcg.HCT = fieldNodeList[1].InnerText; break;
-                    case "HGB": xcg.HGB = fieldNodeList[1].InnerText; break;
-                    case "LYMHC": xcg.LYM = fieldNodeList[1].InnerText; break;
-                    case "LYMHR": xcg.LYMP = fieldNodeList[1].InnerText; break;
-                    case "MCH": xcg.MCH = fieldNodeList[1].InnerText; break;
-                    case "MCHC": xcg.MCHC = fieldNodeList[1].InnerText; break;
-                    case "MCV": xcg.MCV = fieldNodeList[1].InnerText; break;
-                    case "MPV": xcg.MPV = fieldNodeList[1].InnerText; break;
-                    case "MIDC": xcg.MXD = fieldNodeList[1].InnerText; break;
-                    case "MIDR": xcg.MXDP = fieldNodeList[1].InnerText; break;
-                    case "NEUTC": xcg.NEUT = fieldNodeList[1].InnerText; break;
-                    case "NEUTR": xcg.NEUTP = fieldNodeList[1].InnerText; break;
-                    case "PCT": xcg.PCT = fieldNodeList[1].InnerText; break;
-                    case "PDW": xcg.PDW = fieldNodeList[1].InnerText; break;
-                    case "PLT": xcg.PLT = fieldNodeList[1].InnerText; break;
-                    case "RBC": xcg.RBC = fieldNodeList[1].InnerText; break;
-                    case "RDW-CV": xcg.RDW_CV = fieldNodeList[1].InnerText; break;
-                    case "RDW-SD": xcg.RDW_SD = fieldNodeList[1].InnerText; break;
-                    case "WBC": xcg.WBC = fieldNodeList[1].InnerText; break;
-                    case "MONC": xcg.MONO = fieldNodeList[1].InnerText; break;
-                    case "MONP": xcg.MONOP = fieldNodeList[1].InnerText; break;
-                    case "GRAC": xcg.GRAN = fieldNodeList[1].InnerText; break;
-                    case "GRAP": xcg.GRANP = fieldNodeList[1].InnerText; break;
-                    case "P-LCR": xcg.PLCR = fieldNodeList[1].InnerText; break;
-                    default: break;
+                    var fieldNodeList = rowNode.ChildNodes;
+                    string type = fieldNodeList[0].InnerText;
+                    switch (type)
+                    {
+                        case "HCT": xcg.HCT = fieldNodeList[1].InnerText; break;
+                        case "HGB": xcg.HGB = fieldNodeList[1].InnerText; break;
+                        case "LYMHC": xcg.LYM = fieldNodeList[1].InnerText; break;
+                        case "LYMHR": xcg.LYMP = fieldNodeList[1].InnerText; break;
+                        case "MCH": xcg.MCH = fieldNodeList[1].InnerText; break;
+                        case "MCHC": xcg.MCHC = fieldNodeList[1].InnerText; break;
+                        case "MCV": xcg.MCV = fieldNodeList[1].InnerText; break;
+                        case "MPV": xcg.MPV = fieldNodeList[1].InnerText; break;
+                        case "MIDC": xcg.MXD = fieldNodeList[1].InnerText; break;
+                        case "MIDR": xcg.MXDP = fieldNodeList[1].InnerText; break;
+                        case "NEUTC": xcg.NEUT = fieldNodeList[1].InnerText; break;
+                        case "NEUTR": xcg.NEUTP = fieldNodeList[1].InnerText; break;
+                        case "PCT": xcg.PCT = fieldNodeList[1].InnerText; break;
+                        case "PDW": xcg.PDW = fieldNodeList[1].InnerText; break;
+                        case "PLT": xcg.PLT = fieldNodeList[1].InnerText; break;
+                        case "RBC": xcg.RBC = fieldNodeList[1].InnerText; break;
+                        case "RDW-CV": xcg.RDW_CV = fieldNodeList[1].InnerText; break;
+                        case "RDW-SD": xcg.RDW_SD = fieldNodeList[1].InnerText; break;
+                        case "WBC": xcg.WBC = fieldNodeList[1].InnerText; break;
+                        case "MONC": xcg.MONO = fieldNodeList[1].InnerText; break;
+                        case "MONP": xcg.MONOP = fieldNodeList[1].InnerText; break;
+                        case "GRAC": xcg.GRAN = fieldNodeList[1].InnerText; break;
+                        case "GRAP": xcg.GRANP = fieldNodeList[1].InnerText; break;
+                        case "P-LCR": xcg.PLCR = fieldNodeList[1].InnerText; break;
+                        default: break; 
+                    }
                 }
             }
+            catch (Exception ee)
+            {
+                using (StreamWriter sw = new StreamWriter(Application.StartupPath + "/log.txt", true))
+                {
+                    sw.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ") + "异常报文解析：" + ee.Message + "--" + ee.StackTrace);
+                }
+                return;
+            }
             RePushDataXcgHandler handler = new RePushDataXcgHandler(PushDataForXcg);
+            DisplayData obj = new DisplayData();
+            obj.BarCode = xcg.bar_code;
+            obj.UploadDate = xcg.createtime;
             var q = (from l in _existXcgList where l.BarCode == xcg.bar_code && l.UploadDate == xcg.createtime select l).ToList();
             if (q.Count <= 0)
-            {
-                DisplayData obj = new DisplayData();
-                obj.BarCode = xcg.bar_code;
-                obj.UploadDate = xcg.createtime;
-                _existXcgList.Add(obj);
-                IAsyncResult result = handler.BeginInvoke(xcg, new AsyncCallback(CallBackPushXcgDataFunc), xcg);
+            { 
+                _existXcgList.Add(obj);  
             }
+            else
+            {
+                for (int i = 0; i < _existXcgList.Count; i++)
+                {
+                    if (obj.BarCode == _existXcgList[i].BarCode)
+                    {
+                        _existXcgList.RemoveAt(i);
+                        break;
+                    }
+                }
+                _existXcgList.Add(obj);
+            }
+            IAsyncResult result = handler.BeginInvoke(xcg, new AsyncCallback(CallBackPushXcgDataFunc), xcg);
         }
 
         private void socketTcpKbe()
         {
-            string hostName = Dns.GetHostName();   //获取本机名
-            IPHostEntry localhost = Dns.GetHostByName(hostName);//方法已过期，可以获取IPv4的地址
-            IPAddress ip = localhost.AddressList[0];
-            Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            IPEndPoint point = new IPEndPoint(ip, 9001);
-            //socket绑定监听地址
-            serverSocket.Bind(point);
-            //设置同时连接个数
-            serverSocket.Listen(10);
+            try
+            {
+                string hostName = Dns.GetHostName();   //获取本机名
+                IPHostEntry localhost = Dns.GetHostByName(hostName);//方法已过期，可以获取IPv4的地址
+                                                                    //IPAddress ip = localhost.AddressList[0];
+                IPAddress ip = IPAddress.Parse(strIP);
+                Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                IPEndPoint point = new IPEndPoint(ip, int.Parse(strPort));
+                //socket绑定监听地址
+                serverSocket.Bind(point);
+                //设置同时连接个数
+                serverSocket.Listen(10);
 
-            //利用线程后台执行监听,否则程序会假死
-            Thread thread = new Thread(ListenKbe);
-            thread.IsBackground = true;
-            thread.Start(serverSocket);
+                //利用线程后台执行监听,否则程序会假死
+                Thread thread = new Thread(ListenKbe);
+                thread.IsBackground = true;
+                thread.Start(serverSocket);
+            }
+            catch(Exception d)
+            {
+                MessageBox.Show(d.Message);
+            }
         }
         private void ListenKbe(object o)
         {
@@ -1200,6 +1309,26 @@ namespace ZkhwAnalyApp
                 thread.IsBackground = true;
                 thread.Start(send);
             }
+        }
+        private byte[] AckKbe(string str)
+        {
+            string[] astr = Regex.Split(str, "MSA", RegexOptions.IgnoreCase);
+            
+            string a = astr[0];
+            string b = "MSA"+astr[1];
+            int num = a.Length + b.Length + 5;
+            byte[] c = new byte[num];
+            byte[] a1 = Encoding.ASCII.GetBytes(a);
+            Array.Copy(a1, 0, c, 1, a1.Length);
+            byte[] b1 = Encoding.ASCII.GetBytes(b);
+            Array.Copy(b1, 0, c, a1.Length+2, b1.Length);
+            //特殊处理的几个值
+            c[0] = 0x0B;
+            c[a1.Length + 1] = 0x0D;
+            c[num - 3] = 0x0D;
+            c[num - 2] = 0x1C;
+            c[num - 1] = 0x0D;
+            return c;
         }
         private void ReciveKbe(object o)
         {
@@ -1223,18 +1352,33 @@ namespace ZkhwAnalyApp
                         break;
                     }
                     string sendHL7new = "";
-                    string sendHL7 = "MSH|^~\\&|||ICUBIO|335|20190708162020||ACK^R01|3|P|2.3.1||||0||ASCII|||MSA|AA|3|Message accepted|||0|";
+                    //string sendHL7 = "MSH|^~\\&|||ICUBIO|740|20190708162020||ACK^R01|4|P|2.3.1||||0||ASCII|||MSA|AA|4|Message accepted|||0|";
+                    string sendHL7 = "MSH|^~\\&|||ICUBIO|740|20190821110721||ACK^R01|1|P|2.3.1||||0||ASCII|||MSA|AA|1|Message accepted|||0|";
                     string[] sendArray = sendHL7.Split('|');
+                     
                     byte[] buffernew = buffer.Skip(0).Take(effective).ToArray();
+                    /**************调试用**************/
+                    //string str = "";
+                    //for(int i=0;i< buffernew.Length;i++)
+                    //{
+                    //    str = str + buffernew[i].ToString("X2");
+                    //}
+                    /**************end**************/
                     string sHL7 = Encoding.Default.GetString(buffernew).Trim();
+                    using (System.IO.StreamWriter sw = new System.IO.StreamWriter(Application.StartupPath + "/log.txt", true))
+                    {
+                        sw.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss ") + "\n" + sHL7);
+                    }
                     if (sHL7.IndexOf("ICUBIO") > 0)
                     {//解析生化协议报文数据                   
                         UpLoadDataForSH sh = new UpLoadDataForSH(); 
                         string[] sHL7Pids = Regex.Split(sHL7, "PID", RegexOptions.IgnoreCase);
                         if (sHL7Pids.Length == 0) { return; };
                         string[] MSHArray = sHL7Pids[0].Split('|');
+                        //sendArray[3] = MSHArray[3];
                         sendArray[6] = MSHArray[6];
                         sendArray[9] = MSHArray[9];
+                        sendArray[11] = MSHArray[11];
                         sendArray[22] = MSHArray[9];
                         string[] sHL7PArray = sHL7Pids[1].Split('|');
                         sh.bar_code = sHL7PArray[33]; 
@@ -1244,6 +1388,10 @@ namespace ZkhwAnalyApp
                         for (int i = 1; i < sHL7Lines.Length; i++)
                         {
                             string[] sHL7Array = sHL7Lines[i].Split('|');
+                            if (sHL7Array[5] == "" || "".Equals(sHL7Array[5]))
+                            {
+                                continue;
+                            }
                             switch (sHL7Array[4])
                             {
                                 case "ALB": sh.ALB = sHL7Array[5].Substring(0, sHL7Array[5].IndexOf('.') + 3); break;
@@ -1251,7 +1399,7 @@ namespace ZkhwAnalyApp
                                 case "ALT": sh.ALT = sHL7Array[5].Substring(0, sHL7Array[5].IndexOf('.')); break;
                                 case "AST": sh.AST = sHL7Array[5].Substring(0, sHL7Array[5].IndexOf('.')); break;
                                 case "CHO": sh.CHO = sHL7Array[5].Substring(0, sHL7Array[5].IndexOf('.') + 3); break;
-                                case "CREA": sh.Crea = sHL7Array[5].Substring(0, sHL7Array[5].IndexOf('.') + 2); break;
+                                case "CREA": sh.CREA = sHL7Array[5].Substring(0, sHL7Array[5].IndexOf('.') + 2); break;
                                 case "D-BIL": sh.DBIL = sHL7Array[5].Substring(0, sHL7Array[5].IndexOf('.') + 3); break;
                                 case "GGT": sh.GGT = sHL7Array[5].Substring(0, sHL7Array[5].IndexOf('.') + 3); break;
                                 case "GLU": sh.GLU = sHL7Array[5].Substring(0, sHL7Array[5].IndexOf('.') + 3); break;
@@ -1265,24 +1413,46 @@ namespace ZkhwAnalyApp
                                 default: break;
                             }
                         }
-                        sh.createtime = DateTime.ParseExact(sHL7PArray[38], "yyyyMMddHHmmss", System.Globalization.CultureInfo.CurrentCulture).ToString("yyyy-MM-dd HH:mm:ss");
-                        //插入
-                        var q = (from l in _existShList where l.BarCode == sh.bar_code && l.UploadDate == sh.createtime select l).ToList();
-                        if (q.Count <= 0)
-                        {
-                            DisplayData obj = new DisplayData();
-                            obj.BarCode = sh.bar_code;
-                            obj.UploadDate = sh.createtime;
-                            _existShList.Add(obj);
-                            IAsyncResult result = handler.BeginInvoke(sh, new AsyncCallback(CallBackPushShDataFunc), sh);
-                        }
                         //返回生化的确认数据报文
                         for (int j = 0; j < sendArray.Length; j++)
                         {
                             sendHL7new += "|" + sendArray[j];
                         }
-                        byte[] sendBytes = Encoding.Unicode.GetBytes(sendHL7new.Substring(1));
-                        send.Send(sendBytes);
+                        //byte[] sendBytes = Encoding.Unicode.GetBytes(sendHL7new.Substring(1));
+                        //byte[] sendBytes = Encoding.ASCII.GetBytes(sendHL7new.Substring(1));
+                        byte[] sendBytes = AckKbe(sendHL7new.Substring(1));
+                        /**************调试用**************/
+                        //string str1 = "";
+                        //for (int i = 0; i < sendBytes.Length; i++)
+                        //{
+                        //    str1 = str1 + sendBytes[i].ToString("X2");
+                        //}
+                        //send.Send(sendBytes);
+                        /**************end**************/
+                        sh.createtime = DateTime.ParseExact(sHL7PArray[38], "yyyyMMddHHmmss", System.Globalization.CultureInfo.CurrentCulture).ToString("yyyy-MM-dd HH:mm:ss");
+                        //插入
+                        DisplayData obj = new DisplayData();
+                        obj.BarCode = sh.bar_code;
+                        obj.UploadDate = sh.createtime;
+                        var q = (from l in _existShList where l.BarCode == sh.bar_code && l.UploadDate == sh.createtime select l).ToList();
+                        if (q.Count <= 0)
+                        {
+                            _existShList.Add(obj);
+                        }
+                        else
+                        {
+                            for(int i=0;i< _existShList.Count;i++)
+                            {
+                                if(obj.BarCode== _existShList[i].BarCode)
+                                {
+                                    _existShList.RemoveAt(i);
+                                    break;
+                                }
+                            }
+                            _existShList.Add(obj);
+                        }    
+                        IAsyncResult result = handler.BeginInvoke(sh, new AsyncCallback(CallBackPushShDataFunc), sh);
+                         
                     }
                 }
             }
@@ -1299,20 +1469,28 @@ namespace ZkhwAnalyApp
         #region 雷杜
         private void socketTcp()
         {
-            string hostName = Dns.GetHostName();   //获取本机名
-            IPHostEntry localhost = Dns.GetHostByName(hostName);//方法已过期，可以获取IPv4的地址
-            IPAddress ip = localhost.AddressList[0];
-            Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            IPEndPoint point = new IPEndPoint(ip, 9001);
-            //socket绑定监听地址
-            serverSocket.Bind(point);
-            //设置同时连接个数
-            serverSocket.Listen(10);
+            try
+            {
+                string hostName = Dns.GetHostName();   //获取本机名
+                IPHostEntry localhost = Dns.GetHostByName(hostName);//方法已过期，可以获取IPv4的地址
+                                                                    //IPAddress ip = localhost.AddressList[0];
+                IPAddress ip = IPAddress.Parse(strIP);
+                Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                IPEndPoint point = new IPEndPoint(ip, int.Parse(strPort));
+                //socket绑定监听地址
+                serverSocket.Bind(point);
+                //设置同时连接个数
+                serverSocket.Listen(10);
 
-            //利用线程后台执行监听,否则程序会假死
-            Thread thread = new Thread(Listen);
-            thread.IsBackground = true;
-            thread.Start(serverSocket);
+                //利用线程后台执行监听,否则程序会假死
+                Thread thread = new Thread(Listen);
+                thread.IsBackground = true;
+                thread.Start(serverSocket);
+            }
+            catch(Exception d)
+            {
+                MessageBox.Show(d.Message);
+            }
         }
         private void Listen(object o)
         {
@@ -1378,7 +1556,7 @@ namespace ZkhwAnalyApp
                             case "ALT": sh.ALT = sHL7Array[5]; break;
                             case "AST": sh.AST = sHL7Array[5]; break;
                             case "CHO": sh.CHO = sHL7Array[5]; break;
-                            case "CREA": sh.Crea = sHL7Array[5]; break;
+                            case "CREA": sh.CREA = sHL7Array[5]; break;
                             case "DBIL": sh.DBIL = sHL7Array[5]; break;
                             case "GGT": sh.GGT = sHL7Array[5]; break;
                             case "GLU": sh.GLU = sHL7Array[5]; break;
@@ -1395,15 +1573,27 @@ namespace ZkhwAnalyApp
                     sh.createtime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     //插入
                     RePushDataShHandler handler = new RePushDataShHandler(PushDataForSh);
+                    DisplayData obj = new DisplayData();
+                    obj.BarCode = sh.bar_code;
+                    obj.UploadDate = sh.createtime;
                     var q = (from l in _existShList where l.BarCode == sh.bar_code && l.UploadDate == sh.createtime select l).ToList();
                     if (q.Count <= 0)
-                    {
-                        DisplayData obj = new DisplayData();
-                        obj.BarCode = sh.bar_code;
-                        obj.UploadDate = sh.createtime;
-                        _existShList.Add(obj);
-                        IAsyncResult result = handler.BeginInvoke(sh, new AsyncCallback(CallBackPushShDataFunc), sh);
+                    { 
+                        _existShList.Add(obj);  
                     }
+                    else
+                    {
+                        for (int i = 0; i < _existShList.Count; i++)
+                        {
+                            if (obj.BarCode == _existShList[i].BarCode)
+                            {
+                                _existShList.RemoveAt(i);
+                                break;
+                            }
+                        }
+                        _existShList.Add(obj);
+                    }
+                    IAsyncResult result = handler.BeginInvoke(sh, new AsyncCallback(CallBackPushShDataFunc), sh);
                     //返回生化的确认数据报文
                     for (int j = 0; j < sendArray.Length; j++)
                     {
@@ -1462,15 +1652,27 @@ namespace ZkhwAnalyApp
                             }
                         }
                         RePushDataXcgHandler handler = new RePushDataXcgHandler(PushDataForXcg);
+                        DisplayData obj = new DisplayData();
+                        obj.BarCode = xcg.bar_code;
+                        obj.UploadDate = xcg.createtime;
                         var q = (from l in _existXcgList where l.BarCode == xcg.bar_code && l.UploadDate == xcg.createtime select l).ToList();
                         if (q.Count <= 0)
+                        { 
+                            _existXcgList.Add(obj); 
+                        }
+                        else
                         {
-                            DisplayData obj = new DisplayData();
-                            obj.BarCode = xcg.bar_code;
-                            obj.UploadDate = xcg.createtime;
+                            for (int i = 0; i < _existXcgList.Count; i++)
+                            {
+                                if (obj.BarCode == _existXcgList[i].BarCode)
+                                {
+                                    _existXcgList.RemoveAt(i);
+                                    break;
+                                }
+                            }
                             _existXcgList.Add(obj);
-                            IAsyncResult result = handler.BeginInvoke(xcg, new AsyncCallback(CallBackPushXcgDataFunc), xcg);
-                        } 
+                        }
+                        IAsyncResult result = handler.BeginInvoke(xcg, new AsyncCallback(CallBackPushXcgDataFunc), xcg);
                         //返回血球的确认数据报文
                         for (int j = 0; j < sendArray.Length; j++)
                         {

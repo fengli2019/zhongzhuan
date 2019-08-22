@@ -317,7 +317,7 @@ namespace ZkhwAnalyApp
             return obj;
         }
 
-        public static  void GetConfigValues(out string shenghuaPath, out string xuechangguiPath, out string shxqAgreement, out string com,out string shlasttime,out string xcglasttime)
+        public static  void GetConfigValues(out string shenghuaPath, out string xuechangguiPath, out string shxqAgreement, out string com,out string shlasttime,out string xcglasttime,out string ip,out string port)
         {
             shenghuaPath = "";
             xuechangguiPath = "";
@@ -325,6 +325,8 @@ namespace ZkhwAnalyApp
             com = "";
             shlasttime = "";
             xcglasttime = "";
+            ip = "";
+            port = "";
             XmlDocument xmlDoc = new XmlDocument();
             XmlNode node;
             string path = @"config.xml";
@@ -346,6 +348,12 @@ namespace ZkhwAnalyApp
 
             node = xmlDoc.SelectSingleNode("config/xcglasttime");
             xcglasttime = node.InnerText;
+
+            node = xmlDoc.SelectSingleNode("config/ip");
+            ip = node.InnerText;
+
+            node = xmlDoc.SelectSingleNode("config/port");
+            port = node.InnerText;
         }
         public static void WriteConfigTime()
         { 
@@ -361,7 +369,7 @@ namespace ZkhwAnalyApp
 
             xmlDoc.Save(path);
         }
-        public static bool WriteConfigValues(string shenghuaPath, string xuechangguiPath, string shxqAgreement, string com,out string err)
+        public static bool WriteConfigValues(string shenghuaPath, string xuechangguiPath, string shxqAgreement, string com,string ip,string port,out string err)
         {
             bool flag = false;
             err = "";
@@ -382,6 +390,12 @@ namespace ZkhwAnalyApp
 
                 XmlNode node3 = xmlDoc.SelectSingleNode("config/xuechangguiPath");
                 node3.InnerText = xuechangguiPath;
+
+                XmlNode node4 = xmlDoc.SelectSingleNode("config/ip");
+                node4.InnerText = ip;
+
+                XmlNode node5 = xmlDoc.SelectSingleNode("config/port");
+                node5.InnerText = port;
 
                 xmlDoc.Save(path);
                 flag = true;

@@ -43,8 +43,8 @@ namespace ZkhwAnalyApp
                 }
                 else
                 {
-                    sql = @"update zkhw_temp_sh set ALB='" + obj.ALB + "',ALP='" + obj.ALP + "',ALT='" + obj.ALT + "',AST='" + obj.AST + 
-                        "',CHO='" + obj.CHO + "',Crea='" + obj.Crea + "',DBIL='" + obj.DBIL + "',GGT='" + obj.GGT + 
+                    sql = @"update zkhw_temp_sh set status=0,ALB='" + obj.ALB + "',ALP='" + obj.ALP + "',ALT='" + obj.ALT + "',AST='" + obj.AST + 
+                        "',CHO='" + obj.CHO + "',Crea='" + obj.CREA + "',DBIL='" + obj.DBIL + "',GGT='" + obj.GGT + 
                         "',GLU='" + obj.GLU + "',HDLC='" + obj.HDL_C + "',LDLC='" + obj.LDL_C + "',TBIL='" + obj.TBIL +
                         "',TG='" + obj.TG + "',TP='" + obj.TP + "',UA='" + obj.UA + "',UREA='" + obj.UREA +
                         "' where timecodeUnique = '" + timeCodeUnique + "'";
@@ -100,7 +100,7 @@ namespace ZkhwAnalyApp
                 }
                 else
                 {
-                    sql = @"update zkhw_temp_xcg set HCT='" + obj.HCT + "',HGB='" + obj.HGB + "',LYM='" + obj.LYM + 
+                    sql = @"update zkhw_temp_xcg set status=0, HCT='" + obj.HCT + "',HGB='" + obj.HGB + "',LYM='" + obj.LYM + 
                         "',LYMP='" + obj.LYMP + "',MCH='" + obj.MCH + "',MCHC='" + obj.MCHC + "',MCV='" + obj.MCV + 
                         "',MPV='" + obj.MPV + "',MXD='" + obj.MXD + "',MXDP='" + obj.MXDP + "',NEUT='" + obj.NEUT +
                         "',NEUTP='" + obj.NEUTP + "',PCT='" + obj.PCT + "',PDW='" + obj.PDW + "',PLT='" + obj.PLT + 
